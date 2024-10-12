@@ -502,7 +502,7 @@ void logMessages(CSimpleLogger<false, true>& logger, int thread_id, int message_
 		SIMPLE_LOG_INFO_FMT(logger, SLOG_LITERAL("fmt log: {}"), i); // c++ 20 支持
 #endif
 	}
-	std::cout << std::chrono::system_clock::now() << " ## logMessages threadid:" << thread_id << " Done!\n";
+	std::cout << std::chrono::system_clock::now() << " ## logMessages thread id:" << thread_id << " Done!\n";
 }
 
 
@@ -516,7 +516,7 @@ void logMessagesQueued(CQueuedLogger<false>& logger, int thread_id, int message_
 		SIMPLE_LOG_INFO_FMT(logger, SLOG_LITERAL("fmt log: {}"), i); // c++ 20 支持
 #endif
 	}
-	std::cout << std::chrono::system_clock::now() << " @@ logMessagesQueued threadid:" << thread_id << " Done!\n";
+	std::cout << std::chrono::system_clock::now() << " @@ logMessagesQueued thread id:" << thread_id << " Done!\n";
 }
 
 
@@ -528,7 +528,7 @@ int main() {
 		const int num_threads = 20;
 		const int messages_per_thread = 100000;
 
-		std::cout << "Start test at:" << std::chrono::system_clock::now() << "use " << num_threads << " thread ,each write " << messages_per_thread << " logs" << std::endl;
+		std::cout << "Start test at:" << std::chrono::system_clock::now() << " use " << num_threads << " thread ,each write " << messages_per_thread << " logs" << std::endl;
 
 		std::vector<std::thread> threads;
 		for (int i = 0; i < num_threads; ++i) {
