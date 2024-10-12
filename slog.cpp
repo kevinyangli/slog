@@ -188,7 +188,7 @@ namespace SLog {
 			// 日志格式化核心逻辑，如果需要定制化格式化，可以修改这部分代码即可。
 			logger.stream() << logLevelToString(level) << std::this_thread::get_id();
 			printCurrentTime(logger.stream());
-			//logger.stream() << extractFilename(file).data() << SLOG_LITERAL("@") << line << SLOG_LITERAL(": ");
+			logger.stream() << extractFilename(file).data() << SLOG_LITERAL("@") << line << SLOG_LITERAL(": ");
 		}
 
 
@@ -522,11 +522,11 @@ void logMessagesQueued(CQueuedLogger<false>& logger, int thread_id, int message_
 
 int main() {
 	try {
-		CSimpleLogger<false> logger(SLOG_LITERAL("my_log"));
+		CSimpleLogger<false> logger(SLOG_LITERAL("simple_log"));
 		CQueuedLogger<false> queuedLogger(SLOG_LITERAL("queued_log"));
 
 		const int num_threads = 20;
-		const int messages_per_thread = 100000;
+		const int messages_per_thread = 10000;
 
 		std::cout << "Start test at:" << std::chrono::system_clock::now() << " use " << num_threads << " thread ,each write " << messages_per_thread << " logs" << std::endl;
 
