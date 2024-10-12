@@ -67,24 +67,39 @@ namespace SLog {
 #if SLOG_CONFIG_USE_WCHAR
 #define SLOG_CONFIG_FILE_SUFFIX L".log" // 日志文件后缀
 	typedef wchar_t Char;
+	typedef std::char_traits<Char>::int_type CharInt;
 	typedef std::wstreambuf StringBuf;
 	typedef std::wfilebuf FileBuffer;
 	typedef std::wostringstream OutputStream;
 	typedef std::wostream OutputStreamType;
-	typedef std::wstring CharType;
+	typedef std::wstring StringType;
 	typedef std::wstring_view StringView;
+	typedef std::wstringstream StringStream;
+	inline StringType numberToString(std::size_t n) {
+		return std::to_wstring(n);
+	}
 #define SLOG_LITERAL(x) L ## x
+#define SLOG_LITERAL1(x) SLOG_LITERAL(x)
+#define __SLOG_FILE__ SLOG_LITERAL1(__FILE__)
+
 #else
-	#define SLOG_CONFIG_FILE_SUFFIX ".log" // 日志文件后缀
+#define SLOG_CONFIG_FILE_SUFFIX ".log" // 日志文件后缀
 	typedef char Char;
+	typedef std::char_traits<Char>::int_type CharInt;
 	typedef std::streambuf StringBuf;
 	typedef std::filebuf FileBuffer;
 	typedef std::ostringstream OutputStream;
 	typedef std::ostream OutputStreamType;
-	typedef std::string CharType;
+	typedef std::string StringType;
 	typedef std::string_view StringView;
+	typedef std::stringstream StringStream;
+	inline StringType numberToString(std::size_t n) {
+		return std::to_string(n);
+	}
 #define SLOG_LITERAL(x) x
+#define __SLOG_FILE__ __FILE__
 #endif
+
 
 
 	namespace SimpleLogEncryption {
@@ -98,7 +113,7 @@ namespace SLog {
 
 			// 日志后处理核心逻辑，如果需要定制化加密逻辑，增加压缩逻辑，修改这overflow和xsputn这两个函数即可。这里的XOR加密逻辑本质上是一个示例。
 
-			virtual int overflow(int ch) override {
+			virtual CharInt overflow(CharInt ch) override {
 				if (!enableEncryption) {
 					return fileBuffer.sputc(ch);
 				}
@@ -147,7 +162,7 @@ namespace SLog {
 			void close() {
 				streamBuf.fileBuffer.close();
 			}
-			int open(const CharType& FileName, int OpenFlag) {
+			int open(const StringType& FileName, int OpenFlag) {
 				return streamBuf.fileBuffer.open(FileName.c_str(), OpenFlag) != nullptr;
 			}
 			long long tellp() {
@@ -173,7 +188,7 @@ namespace SLog {
 			// 日志格式化核心逻辑，如果需要定制化格式化，可以修改这部分代码即可。
 			logger.stream() << logLevelToString(level) << std::this_thread::get_id();
 			printCurrentTime(logger.stream());
-			logger.stream() << extractFilename(file) << SLOG_LITERAL("@") << line << SLOG_LITERAL(": ");
+			//logger.stream() << extractFilename(file).data() << SLOG_LITERAL("@") << line << SLOG_LITERAL(": ");
 		}
 
 
@@ -195,7 +210,7 @@ namespace SLog {
 
 
 	private:
-		inline StringView extractFilename(const StringView path) const {
+		inline StringView extractFilename(const StringView& path) const {
 #ifdef _WIN32
 			auto path_separator = SLOG_LITERAL('\\');
 #else
@@ -205,7 +220,7 @@ namespace SLog {
 			if (pos != StringView::npos) {
 				return path.substr(pos + 1);
 			}
-			return path;
+			return std::move(path);
 		}
 
 
@@ -254,7 +269,7 @@ namespace SLog {
 	template<bool enableEncryption = false, bool bSupportMulitThread = true>
 	class CSimpleLogger {
 	public:
-		CSimpleLogger(const CharType& filename, size_t maxSize = 20 * 1024 * 1024, size_t maxFiles = 4)
+		CSimpleLogger(const StringType& filename, size_t maxSize = 20 * 1024 * 1024, size_t maxFiles = 4)
 			: log_file_prefix(filename),
 			max_file_size(maxSize),
 			max_files(maxFiles) {
@@ -300,7 +315,7 @@ namespace SLog {
 
 	private:
 		std::mutex log_mutex;
-		CharType log_file_prefix;
+		StringType log_file_prefix;
 		size_t max_file_size;
 		size_t max_files;
 
@@ -312,7 +327,7 @@ namespace SLog {
 				}
 				log_stream.open(log_file_prefix + SLOG_CONFIG_FILE_SUFFIX, std::ios::app);
 				for (int i = 0; !log_stream.is_open(); ++i) {
-					log_stream.open(log_file_prefix + SLOG_LITERAL(".") + std::to_string(i) + SLOG_LITERAL(".temp") + SLOG_CONFIG_FILE_SUFFIX, std::ios::app);
+					log_stream.open(log_file_prefix + SLOG_LITERAL(".") + numberToString(i) + SLOG_LITERAL(".temp") + SLOG_CONFIG_FILE_SUFFIX, std::ios::app);
 				}
 			}
 			catch (...) {
@@ -324,12 +339,12 @@ namespace SLog {
 		void rotateLogsWithOutLock() {
 			try {
 				log_stream.close();
-				if (std::filesystem::exists(log_file_prefix + SLOG_LITERAL(".") + std::to_string(max_files) + SLOG_CONFIG_FILE_SUFFIX)) {
-					std::filesystem::remove(log_file_prefix + SLOG_LITERAL(".") + std::to_string(max_files) + SLOG_CONFIG_FILE_SUFFIX);
+				if (std::filesystem::exists(log_file_prefix + SLOG_LITERAL(".") + numberToString(max_files) + SLOG_CONFIG_FILE_SUFFIX)) {
+					std::filesystem::remove(log_file_prefix + SLOG_LITERAL(".") + numberToString(max_files) + SLOG_CONFIG_FILE_SUFFIX);
 				}
 				for (size_t i = max_files; i > 1; --i) {
-					auto src = log_file_prefix + SLOG_LITERAL(".") + std::to_string(i - 1) + SLOG_CONFIG_FILE_SUFFIX;
-					auto dst = log_file_prefix + SLOG_LITERAL(".") + std::to_string(i) + SLOG_CONFIG_FILE_SUFFIX;
+					auto src = log_file_prefix + SLOG_LITERAL(".") + numberToString(i - 1) + SLOG_CONFIG_FILE_SUFFIX;
+					auto dst = log_file_prefix + SLOG_LITERAL(".") + numberToString(i) + SLOG_CONFIG_FILE_SUFFIX;
 					if (std::filesystem::exists(src)) {
 						std::filesystem::rename(src, dst);
 					}
@@ -374,7 +389,7 @@ namespace SLog {
 			}
 
 
-			void consume(std::vector<T> &out) {
+			void consume(std::vector<T>& out) {
 				std::unique_lock<std::mutex> lock(mtx);
 				while (buffer.empty()) { // 如果缓冲区为空，则等待
 					cond_var.wait(lock);
@@ -394,7 +409,7 @@ namespace SLog {
 
 
 	public:
-		CQueuedLogger(const CharType& filename, size_t maxSize = 20 * 1024 * 1024, size_t maxFiles = 4) :
+		CQueuedLogger(const StringType& filename, size_t maxSize = 20 * 1024 * 1024, size_t maxFiles = 4) :
 			m_singleThreadLoger(filename, maxSize, maxFiles),
 			producerConsumer(queuedSize),
 			write_log_thread([this]() {this->logThreadProc(); }) {
@@ -408,7 +423,7 @@ namespace SLog {
 
 
 		// 下面的public是Log接口，协约式编程 必须实现
-		inline auto log(LogLevel level, const char* file, int line) {
+		inline auto log(LogLevel level, const Char* file, int line) {
 			return CLogStream<CQueuedLogger>(*this, level, file, line);
 		}
 
@@ -420,12 +435,12 @@ namespace SLog {
 		void onEndLogItem() {
 			// 结果在stream里面
 			producerConsumer.produce(stream().str());
-			stream().str("");//清空
+			stream().str(StringType());//清空
 		}
 
 
 		auto& stream() {
-			static thread_local std::stringstream log_stream;
+			static thread_local StringStream log_stream;
 			return log_stream;
 		}
 	private:
@@ -434,7 +449,7 @@ namespace SLog {
 		void logThreadProc() {
 			while (need_exit_log_thread == false) {
 				m_singleThreadLoger.onStartLogItem();
-				std::vector<CharType> logs;
+				std::vector<StringType> logs;
 				producerConsumer.consume(logs);
 				for (auto it = logs.begin(); it != logs.end(); ++it) {
 					m_singleThreadLoger.stream() << *it;
@@ -447,7 +462,7 @@ namespace SLog {
 
 	private:
 		CSimpleLogger<enableEncryption, false> m_singleThreadLoger;
-		CProducerConsumer<CharType> producerConsumer;
+		CProducerConsumer<StringType> producerConsumer;
 		std::thread write_log_thread;
 		bool need_exit_log_thread = false;
 	};
@@ -458,9 +473,9 @@ namespace SLog {
 
 
 // 宏用于自动添加文件名和行号
-#define SIMPLE_LOG_INFO(logger) logger.log(LogLevel::INFO, __FILE__, __LINE__)
-#define SIMPLE_LOG_WARNING(logger) logger.log(LogLevel::WARNING, __FILE__, __LINE__)
-#define SIMPLE_LOG_ERROR(logger) logger.log(LogLevel::ERROR, __FILE__, __LINE__)
+#define SIMPLE_LOG_INFO(logger) logger.log(LogLevel::INFO, __SLOG_FILE__, __LINE__)
+#define SIMPLE_LOG_WARNING(logger) logger.log(LogLevel::WARNING, __SLOG_FILE__, __LINE__)
+#define SIMPLE_LOG_ERROR(logger) logger.log(LogLevel::ERROR, __SLOG_FILE__, __LINE__)
 
 
 #if (__cplusplus >= 202002L || _MSVC_LANG >= 202002L)
@@ -479,12 +494,12 @@ using namespace SLog;
 
 void logMessages(CSimpleLogger<false, true>& logger, int thread_id, int message_count) {
 	for (int i = 0; i < message_count / 3; ++i) {
-		SIMPLE_LOG_INFO(logger) << "Thread " << thread_id << " logging message " << i;
-		SIMPLE_LOG_WARNING(logger) << "Test Warning" << i;
-		SIMPLE_LOG_ERROR(logger) << "Test Error" << i;
+		SIMPLE_LOG_INFO(logger) << SLOG_LITERAL("Thread ") << thread_id << SLOG_LITERAL(" logging message ") << i;
+		SIMPLE_LOG_WARNING(logger) << SLOG_LITERAL("Test Warning") << i;
+		SIMPLE_LOG_ERROR(logger) << SLOG_LITERAL("Test Error") << i;
 
 #if (__cplusplus >= 202002L || _MSVC_LANG >= 202002L)
-		SIMPLE_LOG_INFO_FMT(logger, "fmt log: {}", i); // c++ 20 支持
+		SIMPLE_LOG_INFO_FMT(logger, SLOG_LITERAL("fmt log: {}"), i); // c++ 20 支持
 #endif
 	}
 	std::cout << std::chrono::system_clock::now() << " ## logMessages threadid:" << thread_id << " Done!\n";
@@ -493,12 +508,12 @@ void logMessages(CSimpleLogger<false, true>& logger, int thread_id, int message_
 
 void logMessagesQueued(CQueuedLogger<false>& logger, int thread_id, int message_count) {
 	for (int i = 0; i < message_count / 3; ++i) {
-		SIMPLE_LOG_INFO(logger) << "Thread " << thread_id << " logging message " << i;
-		SIMPLE_LOG_WARNING(logger) << "Test Warning" << i;
-		SIMPLE_LOG_ERROR(logger) << "Test Error" << i;
+		SIMPLE_LOG_INFO(logger) << SLOG_LITERAL("Thread ") << thread_id << SLOG_LITERAL(" logging message ") << i;
+		SIMPLE_LOG_WARNING(logger) << SLOG_LITERAL("Test Warning") << i;
+		SIMPLE_LOG_ERROR(logger) << SLOG_LITERAL("Test Error") << i;
 
 #if (__cplusplus >= 202002L || _MSVC_LANG >= 202002L)
-		SIMPLE_LOG_INFO_FMT(logger, "fmt log: {}", i); // c++ 20 支持
+		SIMPLE_LOG_INFO_FMT(logger, SLOG_LITERAL("fmt log: {}"), i); // c++ 20 支持
 #endif
 	}
 	std::cout << std::chrono::system_clock::now() << " @@ logMessagesQueued threadid:" << thread_id << " Done!\n";
