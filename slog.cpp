@@ -10,7 +10,6 @@
 #include <thread>
 #include <sstream>
 /*
-// CSimpleLogger.h
 //
 // 设计思路：
 // 这个简单的日志系统旨在提供一种灵活的方式记录日志，支持多线程环境下的安全日志记录，
@@ -529,7 +528,7 @@ int main() {
 		CQueuedLogger<false> queuedLogger(SLOG_LITERAL("queued_log"));
 
 		const int num_threads = 20;
-		const int messages_per_thread = 10000;
+		const int messages_per_thread = 100000;
 
 		std::cout << "Start test at:" << std::chrono::system_clock::now() << " use " << num_threads << " thread ,each write " << messages_per_thread << " logs" << std::endl;
 
