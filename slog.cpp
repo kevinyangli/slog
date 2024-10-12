@@ -490,6 +490,9 @@ namespace SLog {
 
 
 //////////////////////////////////////////////////////////////////////////
+// 以下是测试用例:
+
+
 using namespace SLog;
 
 void logMessages(CSimpleLogger<false, true>& logger, int thread_id, int message_count) {
