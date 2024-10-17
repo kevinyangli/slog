@@ -417,6 +417,7 @@ namespace SLog {
 
 		~CQueuedLogger() {
 			need_exit_log_thread = true;
+			producerConsumer.produce("=====loger exit!=====");
 			write_log_thread.join();
 		}
 
